@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Conversor de Imagenes a PDF</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 15px; padding: 30px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+        h1 { font-size: 32px; color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; font-size: 16px; margin-bottom: 20px; }
+        label { display: block; font-weight: 600; color: #333; margin-bottom: 10px; font-size: 14px; }
+        input[type="text"] { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+        .upload-zone { background: white; border-radius: 15px; padding: 60px 30px; text-align: center; border: 4px dashed #667eea; cursor: pointer; transition: all 0.3s; }
+        .upload-zone:hover { border-color: #764ba2; background: #f8f9ff; }
+        .upload-zone h2 { font-size: 24px; color: #333; margin-bottom: 10px; }
+        .upload-zone p { color: #666; font-size: 16px; }
+        .controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
+        .controls h2 { font-size: 22px; color: #333; }
+        .button-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; color: white; transition: all 0.3s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn-sort { background: #3b82f6; }
+        .btn-clear { background: #ef4444; }
+        .btn-generate { background: #10b981; font-size: 16px; padding: 14px 28px; }
+        .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .image-card { position: relative; border: 3px solid #e0e0e0; border-radius: 10px; overflow: hidden; background: white; transition: all 0.3s; }
+        .image-card:hover { border-color: #667eea; transform: translateY(-5px); }
+        .image-card img { width: 100%; height: 180px; object-fit: cover; display: block; }
+        .image-number { position: absolute; top: 10px; left: 10px; background: #667eea; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; }
+        .image-remove { position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; opacity: 0; font-size: 18px; font-weight: bold; padding: 0; }
+        .image-card:hover .image-remove { opacity: 1; }
+        .image-name { padding: 10px; background: #f8f9fa; font-size: 12px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .empty-state { text-align: center; padding: 80px 30px; }
+        .empty-state h3 { font-size: 24px; color: #999; margin-bottom: 10px; }
+        .empty-state p { color: #bbb; font-size: 16px; }
+        #fileInput { display: none; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>📸 Conversor de Imagenes a PDF</h1>
+            <p class="subtitle">Arrastra tus imagenes o haz clic para seleccionarlas</p>
+            <label for="examName">Nombre del Examen</label>
+            <input type="text" id="examName" value="Examen 1 - AWS Cloud Practitioner" />
+        </div>
+
+        <div class="card upload-zone" id="uploadZone">
+            <h2>📤 Arrastra las imagenes aqui</h2>
+            <p>o haz clic para seleccionar archivos</p>
+            <input type="file" id="fileInput" multiple accept="image/*" />
+        </div>
+
+        <div id="controlsSection" class="card hidden">
+            <div class="controls">
+                <h2>Imagenes cargadas: <span id="imageCount">0</span></h2>
+                <div class="button-group">
+                    <button class="btn-sort" id="btnSort">↕️ Ordenar</button>
+                    <button class="btn-clear" id="btnClear">🗑️ Limpiar</button>
+                    <button class="btn-generate" id="btnGenerate">📄 Generar PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="imagesContainer" class="card hidden">
+            <div id="imagesGrid" class="images-grid"></div>
+        </div>
+
+        <div id="emptyState" class="card empty-state">
+            <h3>👀 No hay imagenes cargadas</h3>
+            <p>Sube tus imagenes para comenzar</p>
+        </div>
+    </div>
+
+    <script>
+        // -- Lógica JS (funcional dentro de un .html servido por URL)
+        var images = [];
+        var uploadZone = document.getElementById('uploadZone');
+        var fileInput = document.getElementById('fileInput');
+        var imagesGrid = document.getElementById('imagesGrid');
+        var imagesContainer = document.getElementById('imagesContainer');
+        var emptyState = document.getElementById('emptyState');
+        var controlsSection = document.getElementById('controlsSection');
+        var imageCount = document.getElementById('imageCount');
+        var btnSort = document.getElementById('btnSort');
+        var btnClear = document.getElementById('btnClear');
+        var btnGenerate = document.getElementById('btnGenerate');
+
+        uploadZone.onclick = function() { fileInput.click(); };
+        fileInput.onchange = function(e) { handleFiles(e.target.files); };
+        uploadZone.ondragover = function(e) { e.preventDefault(); };
+        uploadZone.ondrop = function(e) { e.preventDefault(); handleFiles(e.dataTransfer.files); };
+
+        btnSort.onclick = function(e) { e.preventDefault(); sortImages(); };
+
+        // CORRECCIÓN: NO usamos window.location.reload(). Limpiamos en memoria + DOM.
+        btnClear.onclick = function(e) {
+            e.preventDefault();
+            if (!images.length) return;
+            var confirmed = window.confirm('¿Seguro que quieres eliminar todas las imágenes?');
+            if (confirmed) clearAll();
+        };
+
+        btnGenerate.onclick = function(e) { e.preventDefault(); generatePDF(); };
+
+        function handleFiles(files) {
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                if (file.type.indexOf('image') === 0) {
+                    var reader = new FileReader();
+                    reader.onload = (function(f) {
+                        return function(e) {
+                            images.push({ id: Date.now() + Math.random(), name: f.name, data: e.target.result });
+                            updateUI();
+                        };
+                    })(file);
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+
+        function updateUI() {
+            if (images.length > 0) {
+                emptyState.classList.add('hidden');
+                imagesContainer.classList.remove('hidden');
+                controlsSection.classList.remove('hidden');
+                imageCount.textContent = images.length;
+                renderImages();
+            } else {
+                emptyState.classList.remove('hidden');
+                imagesContainer.classList.add('hidden');
+                controlsSection.classList.add('hidden');
+                imageCount.textContent = '0';
+                imagesGrid.innerHTML = '';
+            }
+        }
+
+        function renderImages() {
+            var html = '';
+            for (var i = 0; i < images.length; i++) {
+                html += '<div class="image-card">';
+                html += '<img src="' + images[i].data + '" />';
+                html += '<div class="image-number">#' + (i + 1) + '</div>';
+                html += '<button class="image-remove" onclick="removeImage(' + i + ')">X</button>';
+                html += '<div class="image-name">' + images[i].name + '</div>';
+                html += '</div>';
+            }
+            imagesGrid.innerHTML = html;
+        }
+
+        function removeImage(index) { images.splice(index, 1); updateUI(); }
+
+        function clearAll() {
+            images = [];
+            fileInput.value = '';
+            imagesGrid.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            imagesContainer.classList.add('hidden');
+            controlsSection.classList.add('hidden');
+            imageCount.textContent = '0';
+        }
+
+        function sortImages() {
+            images.sort(function(a, b) {
+                var matchA = a.name.match(/\d+/);
+                var matchB = b.name.match(/\d+/);
+                var numA = matchA ? parseInt(matchA[0]) : 0;
+                var numB = matchB ? parseInt(matchB[0]) : 0;
+                return numA - numB;
+            });
+            updateUI();
+        }
+
+        function generatePDF() {
+            if (images.length === 0) { alert('Por favor, sube al menos una imagen primero'); return; }
+            var examName = document.getElementById('examName').value || 'Examen AWS';
+            var win = window.open('', '_blank', 'width=900,height=700');
+            if (!win) { alert('Tu navegador bloquea ventanas emergentes. Permítelas e intenta de nuevo.'); return; }
+
+            var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + examName + '</title>';
+            html += '<style>@page{size:A4;margin:1cm}body{margin:0;padding:0;font-family:Arial}.cover{display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;page-break-after:always}.page{page-break-after:always;padding:20px}.page img{width:100%;height:auto;max-height:95vh;object-fit:contain;border:1px solid #ddd}.instructions{position:fixed;top:20px;right:20px;background:#232f3e;color:white;padding:20px;border-radius:10px;z-index:9999;max-width:300px}.print-btn{margin-top:15px;padding:12px 24px;background:#10b981;color:white;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;width:100%}@media print{.instructions{display:none}}</style></head><body>';
+            html += '<div class="cover"><h1>' + examName + '</h1><p>AWS Cloud Practitioner</p><p style="margin-top:40px;font-size:20px">' + images.length + ' Preguntas</p></div>';
+
+            for (var i = 0; i < images.length; i++) {
+                html += '<div class="page"><div class="page-number">Pregunta ' + (i + 1) + '/' + images.length + '</div><img src="' + images[i].data + '" /></div>';
+            }
+
+            html += '<div class="instructions"><strong style="font-size:18px">Para guardar como PDF:</strong><br><br><strong>Windows:</strong> Ctrl+P<br><strong>Mac:</strong> Cmd+P<br><br>Luego selecciona "Guardar como PDF"<br><button class="print-btn" onclick="window.print()">🖨️ Imprimir/Guardar</button></div>';
+            html += '</body></html>';
+
+            win.document.write(html);
+            win.document.close();
+            setTimeout(function() { win.focus(); }, 500);
+        }
+
+        // Exponer removeImage en global para los botones generados dinámicamente
+        window.removeImage = removeImage;
+    </script>
+</body>
+</html>
