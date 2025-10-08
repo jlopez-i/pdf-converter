@@ -206,9 +206,10 @@
       sortImages();
     };
 
+    // ✅ Limpieza directa sin confirmación
     btnClear.onclick = e => {
       e.preventDefault();
-      if (confirm('¿Seguro que quieres eliminar todas las imágenes?')) clearAll();
+      clearAll();
     };
 
     btnGenerate.onclick = e => {
